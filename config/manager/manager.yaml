@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chaosdr-operator
+  labels:
+    app: chaosdr-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chaosdr-operator
+  template:
+    metadata:
+      labels:
+        app: chaosdr-operator
+    spec:
+      serviceAccountName: chaosdr-operator
+      containers:
+      - name: operator
+        image: localhost:5000/chaosdr-operator:latest
+        args:
+        - "--health-probe-bind-address=:8081"
+        - "--metrics-bind-address=:8080"
+        - "--leader-elect"
+        env:
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-creds
+              key: access-key
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-creds
+              key: secret-key
+      - name: sidecar
+        image: localhost:5000/chaosdr-sidecar:latest
+        env:
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-creds
+              key: access-key
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-creds
+              key: secret-key

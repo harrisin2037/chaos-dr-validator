@@ -1,0 +1,11 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: chaosdr-operator
+subjects:
+- kind: ServiceAccount
+  name: chaosdr-operator
+roleRef:
+  kind: Role
+  name: chaosdr-operator
+  apiGroup: rbac.authorization.k8s.io

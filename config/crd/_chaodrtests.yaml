@@ -1,0 +1,77 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+  name: chaodrtests.
+spec:
+  group: ""
+  names:
+    kind: ChaosDRTest
+    listKind: ChaosDRTestList
+    plural: chaodrtests
+    singular: chaosdrtest
+  scope: Namespaced
+  versions:
+  - name: ""
+    schema:
+      openAPIV3Schema:
+        description: ChaosDRTest is the Schema for the chaodrtests API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ChaosDRTestSpec defines the desired state of ChaosDRTest
+            properties:
+              appSelector:
+                additionalProperties:
+                  type: string
+                description: AppSelector selects the K8s app to test (e.g., app=redis)
+                type: object
+              chaosType:
+                description: ChaosType specifies the chaos experiment (fixed to pod-delete
+                  for prototype)
+                type: string
+              validationScript:
+                description: ValidationScript runs post-restore (e.g., curl healthz)
+                type: string
+            required:
+            - appSelector
+            - chaosType
+            - validationScript
+            type: object
+          status:
+            description: ChaosDRTestStatus defines the observed state of ChaosDRTest
+            properties:
+              backupName:
+                type: string
+              errorMessage:
+                type: string
+              restoreName:
+                type: string
+              success:
+                type: boolean
+            required:
+            - success
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

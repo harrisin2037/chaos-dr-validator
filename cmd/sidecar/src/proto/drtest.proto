@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package drtest;
+
+option go_package = "sidecar/;";
+
+service DataValidator {
+  rpc ValidateData (DataRequest) returns (DataResponse);
+}
+
+message DataRequest {
+  bytes data = 1;
+  string bucket = 2;
+  string object = 3;
+}
+
+message DataResponse {
+  bool success = 1;
+  string checksum = 2;
+  string object_path = 3;
+}

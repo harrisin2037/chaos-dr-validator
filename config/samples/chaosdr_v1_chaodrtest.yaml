@@ -1,0 +1,10 @@
+apiVersion: chaosdr.io/v1
+kind: ChaosDRTest
+metadata:
+  name: redis-dr-test
+  namespace: default
+spec:
+  appSelector:
+    app: redis
+  chaosType: pod-delete
+  validationScript: "curl http://redis-sandbox/healthz"
