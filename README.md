@@ -27,3 +27,32 @@ Kubernetes operator for chaos-infused DR testing with MinIO storage.
 - Operator triggers Velero backup, custom pod-delete chaos, sandbox restore, validation.
 - Check MinIO (`backups` bucket) for proof.
 - Monitor metrics at operator's `:8080/metrics`.
+
+# ChaosDR Validator
+
+A Kubernetes operator for disaster recovery testing using chaos engineering.
+
+## Installation
+```bash
+make docker-build docker-push
+make deploy
+```
+
+## Usage
+Create a `ChaosDRTest` CR:
+```yaml
+apiVersion: chaosdr.io/v1
+kind: ChaosDRTest
+metadata:
+name: redis-dr-test
+spec:
+appSelector:
+    app: redis
+chaosType: pod-delete
+validationScript: "curl http://redis-sandbox/healthz"
+```
+
+## Development
+- Build: `make build`
+- Test: `make test`
+- Deploy: `make deploy`

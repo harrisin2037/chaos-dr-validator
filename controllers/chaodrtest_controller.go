@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"net/http"
 	"os/exec"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	chaosdrv1 "github.com/harrisin2037/chaos-dr-validator/api/v1"
+	"github.com/harrisin2037/chaos-dr-validator/internal/backup"
 	"github.com/harrisin2037/chaos-dr-validator/internal/chaos"
 	sidecarproto "github.com/harrisin2037/chaos-dr-validator/internal/proto/sidecar"
 	"github.com/harrisin2037/chaos-dr-validator/internal/velero"
@@ -26,6 +29,16 @@ var (
 	drTestSuccess = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "chaosdr_test_success",
 		Help: "Success status of ChaosDRTest",
+	})
+	backupDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "chaosdr_backup_duration_seconds",
+		Help:    "Duration of backup operation",
+		Buckets: prometheus.LinearBuckets(1, 5, 10),
+	})
+	restoreDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "chaosdr_restore_duration_seconds",
+		Help:    "Duration of restore operation",
+		Buckets: prometheus.LinearBuckets(1, 5, 10),
 	})
 )
 
@@ -41,6 +54,14 @@ type ChaosDRTestReconciler struct {
 
 func (r *ChaosDRTestReconciler) Reconcile(ctx context.Context, req ctrr.Request) (ctrr.Result, error) {
 	log := log.FromContext(ctx)
+	var backupClient backup.BackupClient
+	backupTool := "velero"
+	if backupTool == "restic" {
+		backupClient = &backup.ResticClient{}
+	} else {
+		backupClient = &velero.VeleroClient{}
+	}
+
 	cr := &chaosdrv1.ChaosDRTest{}
 	if err := r.Get(ctx, req.NamespacedName, cr); err != nil {
 		if errors.IsNotFound(err) {
@@ -50,13 +71,17 @@ func (r *ChaosDRTestReconciler) Reconcile(ctx context.Context, req ctrr.Request)
 		return ctrr.Result{}, err
 	}
 
-	// Step 1: Trigger Velero backup
+	// Step 1: Trigger backup
+	start := time.Now()
 	backupName := "dr-backup-" + req.Name
-	if err := velero.CreateBackup(backupName, cr.Spec.AppSelector); err != nil {
+	log.Info("Starting ChaosDRTest reconciliation")
+	if err := backupClient.CreateBackup(backupName, cr.Spec.AppSelector); err != nil {
 		cr.Status.ErrorMessage = err.Error()
 		r.Status().Update(ctx, cr)
 		return ctrr.Result{}, err
 	}
+	backupDuration.Observe(time.Since(start).Seconds())
+	log.Info("Ending ChaosDRTest reconciliation")
 	cr.Status.BackupName = backupName
 
 	// Step 2: Inject chaos (pod-delete)
@@ -73,7 +98,7 @@ func (r *ChaosDRTestReconciler) Reconcile(ctx context.Context, req ctrr.Request)
 	// Step 3: Restore to sandbox namespace
 	restoreName := "dr-restore-" + req.Name
 	sandboxNs := "sandbox-" + req.Name
-	if err := velero.CreateRestore(backupName, sandboxNs); err != nil {
+	if err := backupClient.CreateRestore(backupName, sandboxNs); err != nil {
 		cr.Status.ErrorMessage = err.Error()
 		r.Status().Update(ctx, cr)
 		return ctrr.Result{}, err
@@ -112,12 +137,50 @@ func (r *ChaosDRTestReconciler) Reconcile(ctx context.Context, req ctrr.Request)
 
 func (r *ChaosDRTestReconciler) validateApp(ctx context.Context, cr *chaosdrv1.ChaosDRTest) error {
 	log := log.FromContext(ctx)
-	cmd := exec.Command("bash", "-c", cr.Spec.ValidationScript)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Error(err, "validation script failed", "output", string(output))
-		return err
+	cfg := cr.Spec.ValidationConfig
+
+	if cfg.Script != "" {
+		cmd := exec.Command("bash", "-c", cfg.Script)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Error(err, "validation script failed", "output", string(output))
+			return err
+		}
 	}
+
+	if cfg.APIEndpoint != "" {
+		resp, err := http.Get(cfg.APIEndpoint)
+		if err != nil {
+			log.Error(err, "API validation failed")
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != cfg.ExpectedStatusCode {
+			return fmt.Errorf("unexpected status code: got %d, expected %d", resp.StatusCode, cfg.ExpectedStatusCode)
+		}
+	}
+
+	if cfg.DatabaseQuery != nil {
+		// Example: Validate database query (e.g., using SQL driver)
+		db, err := sql.Open("mysql", cfg.DatabaseQuery.ConnectionString)
+		if err != nil {
+			return err
+		}
+		defer db.Close()
+		rows, err := db.Query(cfg.DatabaseQuery.Query)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		rowCount := 0
+		for rows.Next() {
+			rowCount++
+		}
+		if rowCount != cfg.DatabaseQuery.ExpectedRows {
+			return fmt.Errorf("unexpected row count: got %d, expected %d", rowCount, cfg.DatabaseQuery.ExpectedRows)
+		}
+	}
+
 	return nil
 }
 

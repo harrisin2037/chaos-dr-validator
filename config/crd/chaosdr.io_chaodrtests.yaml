@@ -31,6 +31,24 @@ spec:
                 type: string
               validationScript:
                 type: string
+              validationConfig:
+                type: object
+                properties:
+                  script:
+                    type: string
+                  apiEndpoint:
+                    type: string
+                  expectedStatusCode:
+                    type: integer
+                  databaseQuery:
+                    type: object
+                    properties:
+                      connectionString:
+                        type: string
+                      query:
+                        type: string
+                      expectedRows:
+                        type: integer
           status:
             type: object
             properties:

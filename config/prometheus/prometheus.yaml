@@ -1,0 +1,4 @@
+scrape_configs:
+  - job_name: "chaosdr-operator"
+    static_configs:
+      - targets: ["chaosdr-operator:8080"]

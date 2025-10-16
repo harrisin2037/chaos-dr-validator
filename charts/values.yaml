@@ -1,0 +1,9 @@
+replicas: 1
+operator:
+  image: localhost:5000/chaosdr-operator:latest
+sidecar:
+  image: localhost:5000/chaosdr-sidecar:latest
+serviceAccount:
+  name: chaosdr-operator
+minio:
+  secretName: minio-creds

@@ -12,10 +12,12 @@ message DataRequest {
   bytes data = 1;
   string bucket = 2;
   string object = 3;
+  string expected_checksum = 4; // For validation
 }
 
 message DataResponse {
   bool success = 1;
   string checksum = 2;
   string object_path = 3;
+  string validation_error = 4; // Detailed error message
 }

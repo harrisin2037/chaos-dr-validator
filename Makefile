@@ -26,3 +26,10 @@ deploy:
 generate:
 	controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
 	controller-gen crd:trivialVersions=true paths="./api/..." output:crd:artifacts:config=config/crd
+
+helm-install:
+	helm install chaosdr-operator charts/ --values charts/values.yaml
+
+test:
+	go test ./...
+	cd cmd/sidecar && cargo test

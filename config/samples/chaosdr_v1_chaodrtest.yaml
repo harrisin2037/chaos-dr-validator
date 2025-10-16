@@ -8,3 +8,16 @@ spec:
     app: redis
   chaosType: pod-delete
   validationScript: "curl http://redis-sandbox/healthz"
+---
+apiVersion: chaosdr.io/v1
+kind: ChaosDRTest
+metadata:
+  name: redis-network-delay
+spec:
+  appSelector:
+    app: redis
+  chaosType: network-delay
+  chaosParameters:
+    delay: "100ms"
+    jitter: "10ms"
+  validationScript: "curl http://redis-sandbox/healthz"

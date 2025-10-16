@@ -52,8 +52,19 @@ impl drtest::data_validator_server::DataValidator for Validator {
         let req = request.into_inner();
         let data = req.data;
         let checksum = Self::compute_checksum(&data);
-        let object = format!("validation-{}.bin", checksum);
+        
+        if let Some(expected) = req.expected_checksum {
+            if expected != checksum {
+                return Ok(Response::new(DataResponse {
+                    success: false,
+                    checksum,
+                    object_path: "".to_string(),
+                    validation_error: format!("Checksum mismatch: expected {}, got {}", expected, checksum),
+                }));
+            }
+        }
 
+        let object = format!("validation-{}.bin", checksum);
         let data_vec = data.to_vec();
         
         self.upload_to_minio(&req.bucket, &object, data_vec)
@@ -64,6 +75,7 @@ impl drtest::data_validator_server::DataValidator for Validator {
             success: true,
             checksum,
             object_path: format!("{}/{}", req.bucket, object),
+            validation_error: "".to_string(),
         }))
     }
 }

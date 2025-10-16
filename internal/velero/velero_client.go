@@ -5,7 +5,9 @@ import (
 	"os/exec"
 )
 
-func CreateBackup(name string, selector map[string]string) error {
+type VeleroClient struct{}
+
+func (c *VeleroClient) CreateBackup(name string, selector map[string]string) error {
 	selectorStr := ""
 	for k, v := range selector {
 		selectorStr += k + "=" + v
@@ -18,7 +20,7 @@ func CreateBackup(name string, selector map[string]string) error {
 	return nil
 }
 
-func CreateRestore(backupName, namespace string) error {
+func (c *VeleroClient) CreateRestore(backupName, namespace string) error {
 	cmd := exec.Command("velero", "restore", "create", "restore-"+backupName, "--from-backup", backupName, "--namespace", namespace)
 	output, err := cmd.CombinedOutput()
 	if err != nil {

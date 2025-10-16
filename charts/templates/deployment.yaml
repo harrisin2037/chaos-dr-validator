@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: {{ .Release.Name }}-operator
+  spec:
+    replicas: {{ .Values.replicas }}
+    selector:
+      matchLabels:
+        app: {{ .Release.Name }}-operator
+    template:
+      metadata:
+        labels:
+          app: {{ .Release.Name }}-operator
+      spec:
+        serviceAccountName: {{ .Values.serviceAccount.name }}
+        containers:
+        - name: operator
+          image: {{ .Values.operator.image }}
+          args:
+          - "--health-probe-bind-address=:8081"
+          - "--metrics-bind-address=:8080"
+          - "--leader-elect"
+          env:
+          - name: MINIO_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.minio.secretName }}
+                key: access-key
+          - name: MINIO_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.minio.secretName }}
+                key: secret-key
+        - name: sidecar
+          image: {{ .Values.sidecar.image }}
+          env:
+          - name: MINIO_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.minio.secretName }}
+                key: access-key
+          - name: MINIO_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.minio.secretName }}
+                key: secret-key
