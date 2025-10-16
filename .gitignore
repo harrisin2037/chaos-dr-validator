@@ -1,4 +1,3 @@
 cmd/sidecar/target/*
 .DS_Store
 bin/*
-*.sh

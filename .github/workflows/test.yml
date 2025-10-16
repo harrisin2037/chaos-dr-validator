@@ -1,0 +1,28 @@
+name: Test ChaosDR Operator
+
+on: [push, pull_request]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "1.24"
+      - name: Run unit tests
+        run: go test ./... -v
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "1.24"
+      - name: Setup Kind
+        uses: helm/kind-action@v1.8.0
+      - name: Setup test environment
+        run: ./setup-test-env.sh
+      - name: Run integration tests
+        run: ./test-operator.sh

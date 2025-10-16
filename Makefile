@@ -1,4 +1,4 @@
-.PHONY: all build test docker-build docker-push deploy generate
+.PHONY: all build test docker-build docker-push deploy generate test-unit test-integration test-local test-all
 
 all: build
 
@@ -33,3 +33,34 @@ helm-install:
 test:
 	go test ./...
 	cd cmd/sidecar && cargo test
+
+test-unit:
+	go test ./internal/chaos/... -v
+	go test ./controllers/... -v
+	cd cmd/sidecar && cargo test
+
+test-integration:
+	./test-operator.sh
+
+test-local:
+	./setup-test-env.sh
+
+test-all: test-unit test-local test-integration
+
+test-pod-delete:
+	kubectl apply -f config/samples/chaosdr_v1_chaodrtest.yaml
+	kubectl wait --for=condition=complete chaodrtest/redis-dr-test --timeout=300s
+	kubectl get chaodrtest redis-dr-test -o yaml
+
+logs:
+	kubectl logs -l app=chaosdr-operator -f --all-containers
+
+debug:
+	@echo "=== ChaosDRTest Resources ==="
+	kubectl get chaodrtest -A
+	@echo "\n=== PodChaos Resources ==="
+	kubectl get podchaos -A
+	@echo "\n=== NetworkChaos Resources ==="
+	kubectl get networkchaos -A
+	@echo "\n=== Operator Logs ==="
+	kubectl logs -l app=chaosdr-operator --tail=50
